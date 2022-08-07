@@ -1,0 +1,5 @@
+cmake-build-debug
+cmake-build-release
+tufty_sysmon_server/target
+.idea
+*.iml
