@@ -29,6 +29,8 @@ add_executable(${NAME} main.cpp)
 
 target_link_libraries(${NAME}
         pico_stdlib
+        pico_multicore
+        pico_sync
         tufty2040
         pico_graphics
         st7789
