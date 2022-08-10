@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.13)
 set(NAME tufty2040_system_monitor)
 
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 17)
 
 # initialize pico-sdk from submodule
 # note: this must happen before project()

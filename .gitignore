@@ -4,3 +4,4 @@ tufty_sysmon_server/target
 .idea
 *.iml
 build
+artefacts
