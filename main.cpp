@@ -54,12 +54,36 @@ void from_hsv(float h, float s, float v, uint8_t &r, uint8_t &g, uint8_t &b) {
     uint8_t t = v * (1.0f - (1.0f - f) * s);
 
     switch (int(i) % 6) {
-        case 0: r = v; g = t; b = p; break;
-        case 1: r = q; g = v; b = p; break;
-        case 2: r = p; g = v; b = t; break;
-        case 3: r = p; g = q; b = v; break;
-        case 4: r = t; g = p; b = v; break;
-        case 5: r = v; g = p; b = q; break;
+        case 0:
+            r = v;
+            g = t;
+            b = p;
+            break;
+        case 1:
+            r = q;
+            g = v;
+            b = p;
+            break;
+        case 2:
+            r = p;
+            g = v;
+            b = t;
+            break;
+        case 3:
+            r = p;
+            g = q;
+            b = v;
+            break;
+        case 4:
+            r = t;
+            g = p;
+            b = v;
+            break;
+        case 5:
+            r = v;
+            g = p;
+            b = q;
+            break;
     }
 }
 
@@ -70,16 +94,16 @@ int main() {
     Pen BG = graphics.create_pen(120, 40, 60);
 
     struct pt {
-        float      x;
-        float      y;
-        uint8_t    r;
-        float     dx;
-        float     dy;
+        float x;
+        float y;
+        uint8_t r;
+        float dx;
+        float dy;
         uint16_t pen;
     };
 
     std::vector<pt> shapes;
-    for(int i = 0; i < 100; i++) {
+    for (int i = 0; i < 100; i++) {
         pt shape;
         shape.x = rand() % graphics.bounds.w;
         shape.y = rand() % graphics.bounds.h;
@@ -93,27 +117,27 @@ int main() {
     Point text_location(0, 0);
     uint8_t i = 0;
 
-    while(true) {
+    while (true) {
 
         graphics.set_pen(BG);
         graphics.clear();
 
-        for(auto &shape : shapes) {
+        for (auto &shape: shapes) {
             shape.x += shape.dx;
             shape.y += shape.dy;
-            if((shape.x - shape.r) < 0) {
+            if ((shape.x - shape.r) < 0) {
                 shape.dx *= -1;
                 shape.x = shape.r;
             }
-            if((shape.x + shape.r) >= graphics.bounds.w) {
+            if ((shape.x + shape.r) >= graphics.bounds.w) {
                 shape.dx *= -1;
                 shape.x = graphics.bounds.w - shape.r;
             }
-            if((shape.y - shape.r) < 0) {
+            if ((shape.y - shape.r) < 0) {
                 shape.dy *= -1;
                 shape.y = shape.r;
             }
-            if((shape.y + shape.r) >= graphics.bounds.h) {
+            if ((shape.y + shape.r) >= graphics.bounds.h) {
                 shape.dy *= -1;
                 shape.y = graphics.bounds.h - shape.r;
             }
@@ -130,7 +154,7 @@ int main() {
         // update screen
         st7789.update(&graphics);
 
-        i+=10;
+        i += 10;
         tufty.led(i);
     }
 
