@@ -4,6 +4,7 @@
 #include <string>
 #include <algorithm>
 #include <iostream>
+#include <pico/unique_id.h>
 #include "pico/time.h"
 #include "pico/platform.h"
 #include "pico/multicore.h"
@@ -50,6 +51,8 @@ shared_ptr<json> serial_data;
 void comms() {
     string data;
     while (getline(cin, data)) {
+        st7789.set_backlight(255);
+
         json j = json::parse(data);
 
         mutex_enter_blocking(&serial_data_mtx);
@@ -59,7 +62,8 @@ void comms() {
 }
 
 int main() {
-    stdio_init_all();
+    stdio_usb_init();
+    stdio_usb_connected();
     multicore_launch_core1(comms);
 
     st7789.set_backlight(128);
@@ -68,7 +72,7 @@ int main() {
 
     while (true) {
         mutex_enter_blocking(&serial_data_mtx);
-        cout << serial_data << endl;
+        cout << *serial_data << endl;
         mutex_exit(&serial_data_mtx);
 
         graphics.set_pen(BG);
@@ -76,5 +80,12 @@ int main() {
 
         st7789.update(&graphics);
         sleep_ms(1000);
+
+        // Serial ID
+        int len = 2 * PICO_UNIQUE_BOARD_ID_SIZE_BYTES + 1;
+        uint8_t buff[len];
+        pico_get_unique_board_id_string((char *) buff, len);
+        std::string ser = std::string((char *) buff, strlen((char *) buff));
+        cout << ser << endl;
     }
 }
