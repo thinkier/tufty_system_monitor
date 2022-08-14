@@ -1,27 +1,36 @@
 use tokio_serial::{SerialPort, SerialPortBuilderExt};
-use tokio::sync::mpsc::{channel, Sender};
-use tokio::io::{AsyncWriteExt, BufStream};
+use tokio::sync::watch::{channel, Sender};
+use tokio::io::{AsyncWriteExt};
 use tokio::spawn;
-use crate::hwstats::HwStats;
+use tokio::task::JoinHandle;
+use crate::hwstats::{HwStats, HwTemps};
+use crate::SysInfo;
 
-pub async fn connect_to_rp2040() -> Sender<HwStats> {
-    let (tx, mut rx) = channel::<HwStats>(5);
+pub async fn connect_to_rp2040() -> (Sender<HwStats>, JoinHandle<()>) {
+    let (tx, mut rx) = channel::<HwStats>(HwStats {
+        info: SysInfo {
+            cpu_name: "CPU".to_string(),
+            gpu_name: "GPU".to_string(),
+        },
+        temps: HwTemps {
+            cpu: vec![],
+            gpu: vec![],
+        },
+    });
 
-    spawn(async move {
+    let j = spawn(async move {
         let mut serial = tokio_serial::new("COM69", 9600)
             .open_native_async()
             .unwrap();
         serial.write_data_terminal_ready(true).unwrap();
-        let mut buf = BufStream::new(serial);
 
-        while let Some(x) = rx.recv().await {
-            let mut bytes = serde_json::to_vec(&x).unwrap();
+        while  rx.changed().await.is_ok() {
+            let mut bytes = serde_json::to_vec(&*rx.borrow()).unwrap();
             bytes.push(b'\n');
 
-            buf.write_all(&bytes).await.unwrap();
-            buf.flush().await.unwrap();
+            serial.write_all(&bytes).await.unwrap();
         }
-    }).await.unwrap();
+    });
 
-    return tx;
+    return (tx, j);
 }

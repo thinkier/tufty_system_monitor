@@ -3,7 +3,7 @@ extern crate wmi;
 use std::collections::HashMap;
 use wmi::*;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SysInfo {
     pub cpu_name: String,
     pub gpu_name: String,

@@ -11,6 +11,10 @@ mod sysinfo;
 
 #[tokio::main]
 async fn main() {
-    println!("{:?}", SysInfo::load().await);
-    port::connect_to_rp2040().await;
+    loop {
+        let (wtx, j) = port::connect_to_rp2040().await;
+        hwstats::stats_watcher(wtx).await;
+        j.abort();
+        let _ = j.await;
+    }
 }
