@@ -1,5 +1,7 @@
 use std::error::Error;
-use std::fs;
+use std::{env, fs};
+use std::collections::VecDeque;
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::string::ParseError;
 use std::sync::mpsc::{channel, Sender};
@@ -11,17 +13,21 @@ use tokio::sync::watch::{Sender as WSender};
 use tokio::time::sleep;
 use crate::SysInfo;
 
+const TEMPS_LENGTH_CAP: usize = 60;
+
 #[derive(Debug, Serialize)]
 pub struct HwStats {
     #[serde(flatten)]
     pub info: SysInfo,
+    pub time: String,
+    #[serde(flatten)]
     pub temps: HwTemps,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct HwTemps {
-    pub cpu: Vec<i16>,
-    pub gpu: Vec<i16>,
+    pub cpu_temps: VecDeque<i16>,
+    pub gpu_temps: VecDeque<i16>,
 }
 
 #[derive(Debug)]
@@ -84,13 +90,13 @@ fn get_cpu_and_gpu_temp_pos_by_colname(str: &str) -> (usize, usize) {
     return (cpu, gpu);
 }
 
-pub async fn stats_watcher(wtx: WSender<HwStats>) {
+pub async fn stats_watcher(wtx: WSender<Option<HwStats>>) {
     let info = SysInfo::load().await.unwrap();
 
     loop {
         let (tx, rx) = channel();
-        let h = spawn(async {
-            let _ = read_from_icue_log(tx).await;
+        let h = spawn(async move {
+            read_from_icue_log(tx).await.unwrap();
         });
 
         'reader: loop {
@@ -99,10 +105,11 @@ pub async fn stats_watcher(wtx: WSender<HwStats>) {
 
             loop {
                 if let Ok(temps) = rx.try_recv() {
-                    let send = wtx.send(HwStats {
+                    let send = wtx.send(Some(HwStats {
                         info: info.clone(),
+                        time: chrono::Local::now().naive_local().format("%H:%M").to_string(),
                         temps,
-                    }).is_ok();
+                    })).is_ok();
 
                     if !send {
                         h.abort();
@@ -125,7 +132,11 @@ pub async fn stats_watcher(wtx: WSender<HwStats>) {
 }
 
 async fn read_from_icue_log(tx: Sender<HwTemps>) -> Result<(), Box<dyn Error>> {
-    let mut paths = fs::read_dir("%homedrive%%homepath%\\Documents\\iCUE")?
+    let mut path = PathBuf::from(env::var("USERPROFILE")?);
+    path.push("Documents");
+    path.push("iCUE");
+
+    let mut paths = fs::read_dir(path)?
         .into_iter()
         .flat_map(|x| x.ok())
         .map(|x| x.path())
@@ -133,37 +144,45 @@ async fn read_from_icue_log(tx: Sender<HwTemps>) -> Result<(), Box<dyn Error>> {
 
     paths.sort_unstable();
     if let Some(path) = paths.pop() {
+        let mut lim: i64 = -(tfs::metadata(&path).await?.len() as i64);
         let mut file = BufReader::new(tfs::OpenOptions::new()
             .read(true)
-            .open(path)
+            .open(&path)
             .await?);
 
         let mut line = String::new();
-        file.read_line(&mut line).await?;
+        lim += file.read_line(&mut line).await? as i64;
         let (cpu_i, gpu_i) = get_cpu_and_gpu_temp_pos_by_colname(&line);
 
-        let mut cpu = vec![];
-        let mut gpu = vec![];
+        let mut cpu = VecDeque::new();
+        let mut gpu = VecDeque::new();
 
         loop {
             line.clear();
-            file.read_line(&mut line).await?;
+            let c = file.read_line(&mut line).await?;
+            lim += c as i64;
+            if c == 0 {
+                sleep(Duration::from_millis(50)).await;
+                continue;
+            }
             let items = line.split(",").collect::<Vec<_>>();
-            cpu.push(items[cpu_i].parse::<Measurement>()?.as_i16());
-            gpu.push(items[gpu_i].parse::<Measurement>()?.as_i16());
+            cpu.push_back(items[cpu_i].parse::<Measurement>()?.as_i16());
+            gpu.push_back(items[gpu_i].parse::<Measurement>()?.as_i16());
 
-            if cpu.len() > 60 {
-                cpu.remove(0);
+            while cpu.len() > TEMPS_LENGTH_CAP {
+                cpu.pop_front();
             }
 
-            if gpu.len() > 60 {
-                gpu.remove(0);
+            while gpu.len() > TEMPS_LENGTH_CAP {
+                gpu.pop_front();
             }
 
-            tx.send(HwTemps {
-                cpu: cpu.clone(),
-                gpu: gpu.clone(),
-            })?;
+            if lim > 0 {
+                tx.send(HwTemps {
+                    cpu_temps: cpu.clone(),
+                    gpu_temps: gpu.clone(),
+                })?;
+            }
         }
     }
 
