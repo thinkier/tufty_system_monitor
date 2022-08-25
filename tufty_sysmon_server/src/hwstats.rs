@@ -13,7 +13,8 @@ use tokio::sync::watch::{Sender as WSender};
 use tokio::time::sleep;
 use crate::SysInfo;
 
-const TEMPS_LENGTH_CAP: usize = 60;
+const TEMPS_LENGTH_CAP: usize = 100;
+const WMA_COUNT: usize = 10;
 
 #[derive(Debug, Serialize)]
 pub struct HwStats {
@@ -172,19 +173,36 @@ async fn read_from_icue_log(tx: Sender<HwTemps>) -> Result<(), Box<dyn Error>> {
             while cpu.len() > TEMPS_LENGTH_CAP {
                 cpu.pop_front();
             }
-
             while gpu.len() > TEMPS_LENGTH_CAP {
                 gpu.pop_front();
             }
 
             if lim > 0 {
+                let cpu_temps = wma(&cpu);
+                let gpu_temps = wma(&gpu);
+
                 tx.send(HwTemps {
-                    cpu_temps: cpu.clone(),
-                    gpu_temps: gpu.clone(),
+                    cpu_temps,
+                    gpu_temps,
                 })?;
             }
         }
     }
 
     Ok(())
+}
+
+fn wma(buf: &VecDeque<i16>) -> VecDeque<i16> {
+    let mut wma = VecDeque::new();
+    for i in WMA_COUNT..buf.len() {
+        let mut wma_i: isize = buf.iter().skip(i - WMA_COUNT)
+            .take(WMA_COUNT)
+            .enumerate()
+            .map(|(i, x)| (i as isize + 1, *x as isize))
+            .map(|(i, x)| x * i)
+            .sum();
+        wma_i /= (2..=(WMA_COUNT as isize)).sum::<isize>();
+        wma.push_back(wma_i as i16);
+    }
+    wma
 }
