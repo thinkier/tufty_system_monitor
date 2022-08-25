@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
