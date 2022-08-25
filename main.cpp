@@ -93,11 +93,11 @@ void graph_temperatures(PicoGraphics *g, Rect bounds, const Pen &p, json *data) 
         }
     }
 
-    // Strip last digit
+    // Strip last digit (floor)
     min /= 10;
     min *= 10;
 
-    float delta = 10 * round((float) (max - min) / 10);
+    float delta = 10 * ceil((float) (max - min) / 10);
     if (delta < 20) {
         max = min + 20;
         delta = 20;
