@@ -92,6 +92,10 @@ void graph_temperatures(PicoGraphics *g, Rect bounds, const Pen &p, json *data) 
             min = num;
         }
     }
+    if (max - min < 10) {
+        max = min + 10;
+    }
+
     float delta = max - min;
     g->set_pen(WHITE);
 
