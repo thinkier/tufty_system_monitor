@@ -1,5 +1,5 @@
 services:
   builder:
-    build: .
+    image: ghcr.io/thinkier/pico-build
     volumes:
       - .:/env/pico-project
