@@ -8,4 +8,4 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      uses: thinkier/pico-build@4d4c8ec9bf526169abc13aca3e992259fc25fed2
+      - uses: thinkier/pico-build@4d4c8ec9bf526169abc13aca3e992259fc25fed2
