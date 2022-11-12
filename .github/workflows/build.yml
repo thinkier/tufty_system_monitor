@@ -9,4 +9,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: thinkier/pico-build@69db1876bfe02de9bbe008492ad51bf312ba8d85
+      - uses: thinkier/pico-build@v1
